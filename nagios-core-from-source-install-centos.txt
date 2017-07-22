@@ -1,0 +1,6 @@
+sed -i 's/SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
+setenforce 0
+
+yum install -y gcc glibc glibc-common wget unzip httpd php gd gd-devel
+
+
