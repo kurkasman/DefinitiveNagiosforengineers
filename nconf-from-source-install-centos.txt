@@ -1,0 +1,130 @@
+#
+yum install http://dev.mysql.com/get/mysql57-community-release-el7-9.noarch.rpm -y
+yum update -y
+
+#
+yum install mysql-community-client mysql-community-server -y
+
+#
+systemctl enable mysqld.service
+systemctl start mysqld.service
+
+#Check installation password of mysql
+grep password /var/log/mysqld.log
+
+# change db admin password
+ALTER USER 'root'@'localhost' IDENTIFIED BY '#SnTdbadminpass123';
+
+# Create database for nconf
+CREATE DATABASE nconf_db;
+
+# Create db user for nconf 
+CREATE USER 'nconf_user'@'localhost' IDENTIFIED BY '#SnTconfpass123';
+
+# Add privileges to the new user 
+GRANT ALL PRIVILEGES ON nconf_db.* TO 'nconf_user'@'localhost' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+
+#
+yum install php-ldap php-mysql perl-DBI perl-DBD-MySQL -y
+
+cd /var/www/html/
+wget 'http://downloads.sourceforge.net/project/nconf/nconf/1.3.0-0/nconf-1.3.0-0.tgz'
+tar -zxf nconf-1.3.0-0.tgz && rm -r nconf-1.3.0-0.tgz
+
+cp /usr/local/nagios/bin/nagios /var/www/html/nconf/bin/
+
+cd /var/www/html/
+cp -r nconf/config.orig/* nconf/config/
+cp -r nconf/config.orig/.file_accounts.php nconf/config/
+
+cd /var/www/html/
+mysql --user=root -p --database=nconf_db < nconf/INSTALL/create_database.sql
+
+
+#########################################
+#vi /var/www/html/nconf/config/mysql.php#
+#change database configuration for nconf#
+#########################################
+
+
+##########################################################
+#vi /var/www/html/nconf/config/nconf.php#                #
+#                                                        #
+# define('NCONFDIR', "/var/www/html/nconf");             #
+# define('NAGIOS_BIN', "/var/www/html/nconf/bin/nagios");#
+# define('CHECK_STATIC_SYNTAX', 0);                      # 
+##########################################################
+
+
+###################################################################
+#vi /var/www/html/nconf/config/deployment.ini
+# ;; LOCAL deployment ;;
+# 
+# [extract config]
+# type        = local
+# source_file = "/var/www/html/nconf/output/NagiosConfig.tgz" 
+# target_file = "/tmp/" 
+# action      = extract
+# 
+# [copy collector config]
+# type        = local
+# source_file = "/tmp/Default_collector/" 
+# target_file = "/usr/local/nagios/etc/Default_collector/" 
+# action      = copy
+# 
+# [copy global config]
+# type        = local
+# source_file = "/tmp/global/" 
+# target_file = "/usr/local/nagios/etc/global/" 
+# action      = copy
+# 
+# [copy nagios.cfg]
+# type        = local
+# source_file = "/tmp/static_cfg/nagios.cfg" 
+# target_file = "/usr/local/nagios/etc/nagios.cfg" 
+# action      = copy
+# reload_command = "sudo /etc/init.d/nagios reload"
+######################################################################
+
+
+#######################################################
+# vi /etc/sudoers.d/nconf
+# apache  ALL= NOPASSWD: /etc/init.d/nagios reload
+# Defaults:apache !requiretty
+#######################################################
+
+
+
+#######################################################
+# vi /usr/local/nagios/etc/nagios.cfg
+#
+# comment all existent cfg includes
+# add this two 
+#cfg_dir=/usr/local/nagios/etc/global
+#cfg_dir=/usr/local/nagios/etc/Default_collector
+######################################################
+
+cp /usr/local/nagios/etc/nagios.cfg /var/www/html/nconf/static_cfg/
+
+cd /var/www/html/
+rm -r nconf/INSTALL*
+rm -r nconf/UPDATE*
+rm -r nconf/config.orig/
+
+cd /var/www/html/
+chown -R root.apache nconf/
+find nconf/ -type d -exec chmod 750 {} \;
+find nconf/ -type f -exec chmod 640 {} \;
+find nconf/bin/ -type f -exec chmod 750 {} \;
+chown -R apache. nconf/config/
+chown -R apache. nconf/output/
+chown -R apache. nconf/static_cfg/
+chown -R apache. nconf/temp/
+
+
+chown -R nagios. /usr/local/nagios/
+chown -R nagios.apache /usr/local/nagios/etc/
+find /usr/local/nagios/etc/ -type d -exec chmod 775 {} \;
+find /usr/local/nagios/etc/ -type f -exec chmod 664 {} \;
+
