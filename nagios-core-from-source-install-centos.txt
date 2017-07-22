@@ -1,6 +1,57 @@
+#This guide is based on SELinux being disabled or in permissive mode.
+
 sed -i 's/SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
 setenforce 0
 
+#Perform these steps to install the pre-requisite packages.
 yum install -y gcc glibc glibc-common wget unzip httpd php gd gd-devel
+
+#Downloading Nagios 
+cd /tmp
+wget -O nagioscore.tar.gz https://github.com/NagiosEnterprises/nagioscore/archive/nagios-4.3.2.tar.gz
+tar xzf nagioscore.tar.gz
+
+#Compile Nagios from the source
+cd /tmp/nagioscore-nagios-4.3.2/
+./configure
+make all
+
+#Create Nagios User And Group
+useradd nagios
+usermod -a -G nagios apache
+
+#installs the binary files, CGIs, and HTML files.
+make install
+
+#This installs the service or daemon files and also configures them to start on boot. The Apache httpd service is also configured at this point.
+make install-init
+systemctl enable nagios.service
+systemctl enable httpd.service
+
+#installs and configures the external command file.
+make install-commandmode
+
+#This installs the *SAMPLE* configuration files.
+make install-config
+
+#This installs the Apache web server configuration files
+make install-webconf
+
+#to allow port 80 inbound traffic on the local firewall for Nagios Core web interface.
+firewall-cmd --zone=public --add-port=80/tcp
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+
+# Apache user account to be able to log into Nagios.
+htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
+
+# Start Apache and Nagios
+systemctl start httpd.service
+systemctl start nagios.service
+
+
+
+
+
+
 
 
