@@ -1,0 +1,4 @@
+sudo apt-get update
+sudo apt-get install nagios-nrpe-server
+sudo apt-get install nagios-plugins-basic nagios-plugins nagios-plugins-extra
+
